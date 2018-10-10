@@ -345,7 +345,9 @@ class Analyzer(object):
             list of (time, bin) pairs.  If specified, resample to sr first.
             shifts > 1 causes hashes to be extracted from multiple shifts of
             waveform, to reduce frame effects.  """
-        ext = os.path.splitext(filename)[1]
+
+        _, ext = os.path.splitext(filename)
+
         if ext == PRECOMPPKEXT:
             # short-circuit - precomputed fingerprint file
             peaks = peaks_load(filename)
@@ -421,6 +423,10 @@ class Analyzer(object):
             # Or simply np.unique(query_hashes, axis=0) for numpy >= 1.13
 
         # print("wavfile2hashes: read", len(hashes), "hashes from", filename)
+        # os.
+        filename, ext = os.path.splitext(os.path.basename(filename))
+        with open('tests/csv/'+filename+'.csv', 'w') as f:
+            print('\n'.join(['{}, {}'.format(hash[0], hash[1]) for hash in hashes]), file=f)
         return hashes
 
     # ########## functions to link to actual hash table index database ###### #

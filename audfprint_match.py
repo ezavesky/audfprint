@@ -5,6 +5,36 @@ audfprint_match.py
 Fingerprint matching code for audfprint
 
 2014-05-26 Dan Ellis dpwe@ee.columbia.edu
+
+
+Output:
+
+    Track - matched track from the datastore
+    QueryMatchLength - returns how many query seconds matched the resulting track
+    QueryMatchStartsAt - returns time position where resulting track started to match in the query
+    TrackMatchStartsAt - returns time position where the query started to match in the resulting track
+    TrackStartsAt - returns an approximation where does the matched track starts, always relative to the query
+    Coverage - returns a value between [0, 1], informing how much the query covered the resulting track (i.e. a 2 minutes query found a 30 seconds track within it, starting at 100th second, coverage will be equal to (120 - 100)/30 ~= 0.66)
+    Confidence - returns a value between [0, 1]. A value below 0.15 is most probably a false positive. A value bigger than 0.15 is very likely to be an exact match. For good audio quality queries you can expect getting a confidence > 0.5.
+    Stats contains useful statistics information for fine-tuning the algorithm:
+    QueryDuration - time in milliseconds spend just querying the fingerprints datasource.
+    FingerprintingDuration - time in milliseconds spent generating the acousting fingerprints from the media file.
+    TotalTracksAnalyzed - total # of tracks analyzed during query time. If this number exceeds 50, try optimizing your configuration.
+    TotalFingerprintsAnalyzed - total # of fingerprints analyzed during query time. If this number exceeds 500, try optimizing your configuration.
+
+    o = {}
+    o['track'] = ''
+    o['querymatchlength'] = 0.0
+    o['querymatchstartsat'] = 0.0
+    o['trackmatchstartsat'] = 0.0
+    o['trackstartsat'] = 0.0
+    o['coverage'] = 0.0
+    o['confidence'] = 0.0
+    o['queryduration'] = 0.0
+    o['fingerprintingduration'] = 0.0
+    o['totaltracksanalyzed'] = 0.0
+    o['totalfingerprintsanalyzed'] = 0.0
+
 """
 from __future__ import division, print_function
 import os
@@ -115,6 +145,9 @@ class Matcher(object):
         # If there are a lot of matches within a single track at different
         # alignments, stop looking after a while.
         self.max_alignments_per_id = 100
+
+
+        self.fingerprintingduration = 0.0
 
     def _best_count_ids(self, hits, ht):
         """ Return the indexes for the ids with the best counts.
@@ -312,8 +345,9 @@ class Matcher(object):
         """
         # find the implicated id, time pairs from hash table
         # log("nhashes=%d" % np.shape(hashes)[0])
+        # print('hashes', hashes)
         hits = ht.get_hits(hashes)
-
+        # print('hits', hits)
         bestids, rawcounts = self._best_count_ids(hits, ht)
 
         # log("len(rawcounts)=%d max(rawcounts)=%d" %
@@ -323,6 +357,7 @@ class Matcher(object):
         else:
             results = self._exact_match_counts(hits, bestids, rawcounts,
                                                hashesfor)
+        # print('results', results)
         # Sort results by filtered count, descending
         results = results[(-results[:, 1]).argsort(),]
         # Where was our best hit in the unfiltered count ranking?
@@ -336,11 +371,13 @@ class Matcher(object):
         # results = results[:, :4]
 
         if hashesfor is None:
+            print(results)
             return results
         else:
             id = results[hashesfor, 0]
             mode = results[hashesfor, 2]
             hashesforhashes = self._unique_match_hashes(id, hits, mode)
+            print(results, hashesforhashes)
             return results, hashesforhashes
 
     def match_file(self, analyzer, ht, filename, number=None):
@@ -349,7 +386,9 @@ class Matcher(object):
             timeoffs, rawmatchcount), also length of input file in sec,
             and count of raw query hashes extracted
         """
+        tic = time.clock()
         q_hashes = analyzer.wavfile2hashes(filename)
+        self.fingerprintingduration = time.clock() - tic
         # Fake durations as largest hash time
         if len(q_hashes) == 0:
             durd = 0.0
@@ -364,7 +403,10 @@ class Matcher(object):
                   ('%.3f' % durd), "s "
                                    "to", len(q_hashes), "hashes")
         # Run query
+        tic = time.clock()
         rslts = self.match_hashes(ht, q_hashes)
+        self.fingerprintingduration += time.clock() - tic
+
         # Post filtering
         if self.sort_by_time:
             rslts = rslts[(-rslts[:, 2]).argsort(), :]
@@ -373,42 +415,68 @@ class Matcher(object):
     def file_match_to_msgs(self, analyzer, ht, qry, number=None):
         """ Perform a match on a single input file, return list
             of message strings """
+
+        o = {}
+        o['track'] = ''
+        o['querymatchlength'] = 0.0
+        o['querymatchstartsat'] = 0.0
+        o['trackmatchstartsat'] = 0.0
+        o['trackstartsat'] = 0.0
+        o['coverage'] = 0.0
+        o['fingerprintingduration'] = self.fingerprintingduration
+        # print(self.fingerprintingduration)
         rslts, dur, nhash = self.match_file(analyzer, ht, qry, number)
         t_hop = analyzer.n_hop / analyzer.target_sr
+        # print(rslts)
         if self.verbose:
             qrymsg = qry + (' %.1f ' % dur) + "sec " + str(nhash) + " raw hashes"
+            o['queryduration'] = dur
+            o['totalfingerprintsanalyzed'] = nhash
         else:
             qrymsg = qry
 
         msgrslt = []
+
         if len(rslts) == 0:
             # No matches returned at all
             nhashaligned = 0
             if self.verbose:
                 msgrslt.append("NOMATCH " + qrymsg)
+                o['track'] = 'NOMATCH'
             else:
                 msgrslt.append(qrymsg + "\t")
         else:
             for (tophitid, nhashaligned, aligntime, nhashraw, rank,
                  min_time, max_time) in rslts:
                 # figure the number of raw and aligned matches for top hit
+                print('min-max', min_time, max_time)
                 if self.verbose:
                     if self.find_time_range:
                         msg = ("Matched {:6.1f} s starting at {:6.1f} s in {:s}"
                                " to time {:6.1f} s in {:s}").format(
                                 (max_time - min_time) * t_hop, min_time * t_hop, qry,
                                 (min_time + aligntime) * t_hop, ht.names[tophitid])
+
                     else:
                         msg = "Matched {:s} as {:s} at {:6.1f} s".format(
                                 qrymsg, ht.names[tophitid], aligntime * t_hop)
+                        o['track'] = ht.names[tophitid]
+                        o['coverage'] = dur/ht.durationperid[tophitid]
                     msg += (" with {:5d} of {:5d} common hashes"
                             " at rank {:2d}").format(
                             nhashaligned, nhashraw, rank)
+                    o['totaltracksanalyzed'] = rank
+                    o['confidence'] = nhashaligned/nhashraw
                     msgrslt.append(msg)
                 else:
                     msgrslt.append(qrymsg + "\t" + ht.names[tophitid])
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
+        try:
+            print('duration', dur, ht.durationperid[tophitid])
+        except:
+            pass
+        print(o)
         return msgrslt
 
     def illustrate_match(self, analyzer, ht, filename):

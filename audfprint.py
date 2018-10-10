@@ -27,12 +27,16 @@ def filename_list_iterator(filelist, wavdir, wavext, listflag):
     """ Iterator to yeild all the filenames, possibly interpreting them
         as list files, prepending wavdir """
     if not listflag:
+        # print(filelist)
         for filename in filelist:
-            yield os.path.join(wavdir, filename + wavext)
+            # print('listflag', os.path.join(wavdir, filename + wavext))
+            yield filename#os.path.join(wavdir, filename + wavext)
     else:
+        # print(filelist)
         for listfilename in filelist:
             with open(listfilename, 'r') as f:
                 for filename in f:
+                    # print('|', os.path.join(wavdir, filename.rstrip('\n') + wavext))
                     yield os.path.join(wavdir, filename.rstrip('\n') + wavext)
 
 
