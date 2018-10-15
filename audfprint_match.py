@@ -50,7 +50,6 @@ import scipy.signal
 import audfprint_analyze  # for localtest and illustrate
 import audio_read
 
-
 def process_info():
     rss = usrtime = 0
     p = psutil.Process(os.getpid())
@@ -347,7 +346,6 @@ class Matcher(object):
         # log("nhashes=%d" % np.shape(hashes)[0])
         # print('hashes', hashes)
         hits = ht.get_hits(hashes)
-        # print('hits', hits)
         bestids, rawcounts = self._best_count_ids(hits, ht)
 
         # log("len(rawcounts)=%d max(rawcounts)=%d" %
@@ -371,13 +369,11 @@ class Matcher(object):
         # results = results[:, :4]
 
         if hashesfor is None:
-            print(results)
             return results
         else:
             id = results[hashesfor, 0]
             mode = results[hashesfor, 2]
             hashesforhashes = self._unique_match_hashes(id, hits, mode)
-            print(results, hashesforhashes)
             return results, hashesforhashes
 
     def match_file(self, analyzer, ht, filename, number=None):
@@ -415,7 +411,49 @@ class Matcher(object):
     def file_match_to_msgs(self, analyzer, ht, qry, number=None):
         """ Perform a match on a single input file, return list
             of message strings """
+        rslts, dur, nhash = self.match_file(analyzer, ht, qry, number)
+        t_hop = analyzer.n_hop / analyzer.target_sr
+        if self.verbose:
+            qrymsg = qry + (' %.1f ' % dur) + "sec " + str(nhash) + " raw hashes"
+        else:
+            qrymsg = qry
 
+        msgrslt = []
+        if len(rslts) == 0:
+            # No matches returned at all
+            nhashaligned = 0
+            if self.verbose:
+                msgrslt.append("NOMATCH " + qrymsg)
+            else:
+                msgrslt.append(qrymsg + "\t")
+        else:
+            for (tophitid, nhashaligned, aligntime, nhashraw, rank,
+                 min_time, max_time) in rslts:
+                # figure the number of raw and aligned matches for top hit
+                if self.verbose:
+                    if self.find_time_range:
+                        msg = ("Matched {:6.1f} s starting at {:6.1f} s in {:s}"
+                               " to time {:6.1f} s in {:s}").format(
+                                (max_time - min_time) * t_hop, min_time * t_hop, qry,
+                                (min_time + aligntime) * t_hop, ht.names[tophitid])
+                    else:
+                        msg = "Matched {:s} as {:s} at {:6.1f} s".format(
+                                qrymsg, ht.names[tophitid], aligntime * t_hop)
+                    msg += (" with {:5d} of {:5d} common hashes"
+                            " at rank {:2d}").format(
+                            nhashaligned, nhashraw, rank)
+                    msgrslt.append(msg)
+                else:
+                    msgrslt.append(qrymsg + "\t" + ht.names[tophitid])
+                if self.illustrate:
+                    self.illustrate_match(analyzer, ht, qry)
+        return msgrslt
+
+
+    def file_match_to_objs(self, analyzer, ht, qry, number=None):
+        """ Perform a match on a single input file, return list
+            of utf-8 json objects """
+        print('query: ', qry)
         o = {}
         o['track'] = ''
         o['querymatchlength'] = 0.0
@@ -428,12 +466,12 @@ class Matcher(object):
         rslts, dur, nhash = self.match_file(analyzer, ht, qry, number)
         t_hop = analyzer.n_hop / analyzer.target_sr
         # print(rslts)
-        if self.verbose:
-            qrymsg = qry + (' %.1f ' % dur) + "sec " + str(nhash) + " raw hashes"
-            o['queryduration'] = dur
-            o['totalfingerprintsanalyzed'] = nhash
-        else:
-            qrymsg = qry
+        # if self.verbose:
+        #     qrymsg = qry + (' %.1f ' % dur) + "sec " + str(nhash) + " raw hashes"
+        o['queryduration'] = dur
+        o['totalfingerprintsanalyzed'] = nhash
+        # else:
+        #     qrymsg = qry
 
         msgrslt = []
 
@@ -441,7 +479,6 @@ class Matcher(object):
             # No matches returned at all
             nhashaligned = 0
             if self.verbose:
-                msgrslt.append("NOMATCH " + qrymsg)
                 o['track'] = 'NOMATCH'
             else:
                 msgrslt.append(qrymsg + "\t")
@@ -449,41 +486,41 @@ class Matcher(object):
             for (tophitid, nhashaligned, aligntime, nhashraw, rank,
                  min_time, max_time) in rslts:
                 # figure the number of raw and aligned matches for top hit
-                print('min-max', min_time, max_time)
+                o['track'] = ht.names[tophitid]
                 if self.verbose:
                     if self.find_time_range:
                         msg = ("Matched {:6.1f} s starting at {:6.1f} s in {:s}"
                                " to time {:6.1f} s in {:s}").format(
                                 (max_time - min_time) * t_hop, min_time * t_hop, qry,
                                 (min_time + aligntime) * t_hop, ht.names[tophitid])
-
-                    else:
-                        msg = "Matched {:s} as {:s} at {:6.1f} s".format(
-                                qrymsg, ht.names[tophitid], aligntime * t_hop)
+                        o['querymatchlength'] = (max_time - min_time) * t_hop
+                        o['querymatchstartsat'] = min_time * t_hop
+                        o['trackmatchstartsat'] = (min_time + aligntime) * t_hop
                         o['track'] = ht.names[tophitid]
-                        o['coverage'] = dur/ht.durationperid[tophitid]
-                    msg += (" with {:5d} of {:5d} common hashes"
-                            " at rank {:2d}").format(
-                            nhashaligned, nhashraw, rank)
+                    # else:
+                        # msg = "Matched {:s} as {:s} at {:6.1f} s".format(
+                        #         qrymsg, ht.names[tophitid], aligntime * t_hop)
+                        # o['track'] = ht.names[tophitid]
+                    o['coverage'] = dur/ht.durationperiod[tophitid]
+                    # msg += (" with {:5d} of {:5d} common hashes"
+                    #         " at rank {:2d}").format(
+                    #         nhashaligned, nhashraw, rank)
                     o['totaltracksanalyzed'] = rank
                     o['confidence'] = nhashaligned/nhashraw
-                    msgrslt.append(msg)
-                else:
-                    msgrslt.append(qrymsg + "\t" + ht.names[tophitid])
+                    # msgrslt.append(msg)
+                # else:
+                #     msgrslt.append(qrymsg + "\t" + ht.names[tophitid])
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
-        try:
-            print('duration', dur, ht.durationperid[tophitid])
-        except:
-            pass
-        print(o)
-        return msgrslt
+
+        return o
 
     def illustrate_match(self, analyzer, ht, filename):
         """ Show the query fingerprints and the matching ones
             plotted over a spectrogram """
         # Make the spectrogram
         # d, sr = librosa.load(filename, sr=analyzer.target_sr)
+        print('filename', filename)
         d, sr = audio_read.audio_read(filename, sr=analyzer.target_sr, channels=1)
         sgram = np.abs(librosa.stft(d, n_fft=analyzer.n_fft,
                                     hop_length=analyzer.n_hop,
@@ -511,6 +548,8 @@ class Matcher(object):
         # Convert the hashes to landmarks
         lms = audfprint_analyze.hashes2landmarks(q_hashes)
         mlms = audfprint_analyze.hashes2landmarks(matchhashes)
+        print(len(lms))
+        print(len(mlms), len(hits))
         # Overplot on the spectrogram
         plt.plot(np.array([[x[0], x[0] + x[3]] for x in lms]).T,
                  np.array([[x[1], x[2]] for x in lms]).T,
@@ -519,7 +558,7 @@ class Matcher(object):
                  np.array([[x[1], x[2]] for x in mlms]).T,
                  '.-r')
         # Add title
-        plt.title(filename + " : Matched as " + ht.names[results[0][0]]
+        plt.title(" : Matched as " + ht.names[results[0][0]]
                   + (" with %d of %d hashes" % (len(matchhashes),
                                                 len(q_hashes))))
         # Display
@@ -534,8 +573,7 @@ def localtest():
     qry = 'query.mp3'
     hash_tab = audfprint_analyze.glob2hashtable(pat)
     matcher = Matcher()
-    rslts, dur, nhash = matcher.match_file(audfprint_analyze.g2h_analyzer,
-                                           hash_tab, qry)
+    rslts, dur, nhash = matcher.match_file(audfprint_analyze.g2h_analyzer, hash_tab, qry)
     t_hop = 0.02322
     print("Matched", qry, "(", dur, "s,", nhash, "hashes)",
           "as", hash_tab.names[rslts[0][0]],

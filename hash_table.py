@@ -42,7 +42,13 @@ HT_COMPAT_VERSION = 20170724
 # Earliest version that can be updated with load_old
 HT_OLD_COMPAT_VERSION = 20140920
 
-fileduration = lambda filename : float(subprocess.check_output(' '.join(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '\"{}\"'.format(filename)]), shell=True).splitlines()[0].decode('utf-8'))
+def track_duration(filename):
+    try:
+        duration = subprocess.check_output(' '.join(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', '\"{}\"'.format(filename)]), shell=True).splitlines()[0].decode('utf-8')
+        duration = float(duration)
+    except subprocess.CalledProcessError:
+        duration = 0
+    return duration
 
 def _bitsfor(maxval):
     """ Convert a maxval into a number of bits (left shift).
@@ -80,7 +86,7 @@ class HashTable(object):
             self.names = []
             # track number of hashes stored per id
             self.hashesperid = np.zeros(0, np.uint32)
-            self.durationperid = np.zeros(0, np.float32)
+            self.durationperiod = np.zeros(0, np.float32)
             # Empty params
             self.params = {}
             # Record the current version
@@ -94,15 +100,15 @@ class HashTable(object):
         self.counts[:] = 0
         self.names = []
         self.hashesperid.resize(0)
-        self.durationperid.resize(0)
+        self.durationperiod.resize(0)
         self.dirty = True
 
     def store(self, name, timehashpairs):
         """ Store a list of hashes in the hash table
             associated with a particular name (or integer ID) and time.
         """
-        track_duration = fileduration(name)
-        print('store', name, track_duration)
+        duration = track_duration(name)
+        # print('store', name, track_duration)
         id_ = self.name_to_id(name, add_if_missing=True)
         # Now insert the hashes
         hashmask = (1 << self.hashbits) - 1
@@ -145,8 +151,8 @@ class HashTable(object):
             self.counts[hash_] = count + 1
         # Record how many hashes we (attempted to) save for this id
         self.hashesperid[id_] += len(timehashpairs)
-        print(track_duration, type(track_duration))
-        self.durationperid[id_] += track_duration
+        # print(track_duration, type(track_duration))
+        self.durationperiod[id_] += duration
         # Mark as unsaved
         self.dirty = True
 
@@ -230,6 +236,7 @@ class HashTable(object):
         else:
             f = gzip.open(name, 'rb')
         temp = pickle.load(f)
+        # print('temp:', temp)
         if temp.ht_version < HT_OLD_COMPAT_VERSION:
             raise ValueError('Version of ' + name + ' is ' + str(temp.ht_version)
                              + ' which is not at least ' +
@@ -255,7 +262,7 @@ class HashTable(object):
         self.counts = temp.counts
         self.names = temp.names
         self.hashesperid = np.array(temp.hashesperid).astype(np.uint32)
-        self.durationperid = np.array(temp.durationperid).astype(np.float32)
+        self.durationperiod = np.array(temp.durationperiod).astype(np.float32)
         self.dirty = False
         self.params = params
 
@@ -292,7 +299,7 @@ class HashTable(object):
         self.names = [str(val[0]) if len(val) > 0 else []
                       for val in mht['HashTableNames'][0]]
         self.hashesperid = np.array(mht['HashTableLengths'][0]).astype(np.uint32)
-        self.durationperid = np.array(mht['HashTableDurations'][0]).astype(np.float32)
+        self.durationperiod = np.array(mht['HashTableDurations'][0]).astype(np.float32)
         # Matlab uses 1-origin for the IDs in the hashes, but the Python code
         # also skips using id_ 0, so that names[0] corresponds to id_ 1.
         # Otherwise unmodified database
@@ -312,7 +319,7 @@ class HashTable(object):
         # size = len(self.counts)
         self.names += ht.names
         self.hashesperid = np.append(self.hashesperid, ht.hashesperid)
-        self.durationperid = np.append(self.durationperid, ht.durationperid)
+        self.durationperiod = np.append(self.durationperiod, ht.durationperiod)
         # Shift all the IDs in the second table down by ncurrent
         idoffset = (1 << self.maxtimebits) * ncurrent
         for hash_ in np.nonzero(ht.counts)[0]:
@@ -350,11 +357,11 @@ class HashTable(object):
                     id_ = self.names.index(None)
                     self.names[id_] = name
                     self.hashesperid[id_] = 0
-                    self.durationperid[id_] = fileduration(name)
+                    self.durationperiod[id_] = (name)
                 except ValueError:
                     self.names.append(name)
                     self.hashesperid = np.append(self.hashesperid, [0])
-                    self.durationperid = np.append(self.durationperid, [0])
+                    self.durationperiod = np.append(self.durationperiod, [0])
             id_ = self.names.index(name)
         else:
             # we were passed in a numerical id
@@ -378,7 +385,7 @@ class HashTable(object):
             hashes_removed += np.sum(id_in_table[hash_])
         self.names[id_] = None
         self.hashesperid[id_] = 0
-        self.durationperid[id_] = 0
+        self.durationperiod[id_] = 0
         self.dirty = True
         print("Removed", name, "(", hashes_removed, "hashes).")
 
@@ -405,6 +412,6 @@ class HashTable(object):
         """ List all the known items. """
         if not print_fn:
             print_fn = print
-        for name, count, duration in zip(self.names, self.hashesperid, self.durationperid):
+        for name, count, duration in zip(self.names, self.hashesperid, self.durationperiod):
             if name:
                 print_fn("{} ( {} hashes) ( {} s)".format(name, str(count), duration))
