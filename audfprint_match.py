@@ -50,6 +50,8 @@ import scipy.signal
 import audfprint_analyze  # for localtest and illustrate
 import audio_read
 
+
+import json
 def process_info():
     rss = usrtime = 0
     p = psutil.Process(os.getpid())
@@ -395,9 +397,9 @@ class Matcher(object):
                 numberstring = "#%d" % number
             else:
                 numberstring = ""
-            print(time.ctime(), "Analyzed", numberstring, filename, "of",
-                  ('%.3f' % durd), "s "
-                                   "to", len(q_hashes), "hashes")
+            # print(time.ctime(), "Analyzed", numberstring, filename, "of",
+            #       ('%.3f' % durd), "s "
+            #                        "to", len(q_hashes), "hashes")
         # Run query
         tic = time.clock()
         rslts = self.match_hashes(ht, q_hashes)
@@ -453,7 +455,7 @@ class Matcher(object):
     def file_match_to_objs(self, analyzer, ht, qry, number=None):
         """ Perform a match on a single input file, return list
             of utf-8 json objects """
-        print('query: ', qry)
+
         o = {}
         o['track'] = ''
         o['querymatchlength'] = 0.0
@@ -496,7 +498,6 @@ class Matcher(object):
                         o['querymatchlength'] = (max_time - min_time) * t_hop
                         o['querymatchstartsat'] = min_time * t_hop
                         o['trackmatchstartsat'] = (min_time + aligntime) * t_hop
-                        o['track'] = ht.names[tophitid]
                     # else:
                         # msg = "Matched {:s} as {:s} at {:6.1f} s".format(
                         #         qrymsg, ht.names[tophitid], aligntime * t_hop)
@@ -513,7 +514,7 @@ class Matcher(object):
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
 
-        return o
+        return '', o
 
     def illustrate_match(self, analyzer, ht, filename):
         """ Show the query fingerprints and the matching ones
@@ -548,8 +549,9 @@ class Matcher(object):
         # Convert the hashes to landmarks
         lms = audfprint_analyze.hashes2landmarks(q_hashes)
         mlms = audfprint_analyze.hashes2landmarks(matchhashes)
+        print(len(q_hashes))
         print(len(lms))
-        print(len(mlms), len(hits))
+        print(len(mlms))
         # Overplot on the spectrogram
         plt.plot(np.array([[x[0], x[0] + x[3]] for x in lms]).T,
                  np.array([[x[1], x[2]] for x in lms]).T,

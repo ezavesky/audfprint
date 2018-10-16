@@ -158,8 +158,9 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         # Running query, single-core mode
         for num, filename in enumerate(filename_iter):
             msgs = matcher.file_match_to_msgs(analyzer, hash_tab, filename, num)
-            msgs = matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
             report(msgs)
+            # msgs = matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
+            # report(msgs)
 
     elif cmd == 'new' or cmd == 'add':
         # Adding files
@@ -167,7 +168,7 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         ix = 0
         for filename in filename_iter:
             report([time.ctime() + " ingesting #" + str(ix) +" : "
-                    + filename + " "+ str(hash_table.track_duration(filename))+"s ..."])
+                    + filename + " "+ str(hash_table.fileduration(filename))+"s ..."])
             dur, nhash = analyzer.ingest(hash_tab, filename)
             tothashes += nhash
             ix += 1
