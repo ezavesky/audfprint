@@ -77,7 +77,6 @@ class HashTable(object):
             self.hashbits = hashbits
             self.depth = depth
             self.maxtimebits = _bitsfor(maxtime)
-            self.density=0
             # allocate the big table
             size = 2 ** hashbits
             self.table = np.zeros((size, depth), dtype=np.uint32)
@@ -88,6 +87,7 @@ class HashTable(object):
             # track number of hashes stored per id
             self.hashesperid = np.zeros(0, np.uint32)
             self.durationperiod = np.zeros(0, np.float32)
+            self.densityperid = np.zeros(0, np.float32)
             # Empty params
             self.params = {}
             # Record the current version
@@ -102,9 +102,10 @@ class HashTable(object):
         self.names = []
         self.hashesperid.resize(0)
         self.durationperiod.resize(0)
+        self.densityperid.resize(0)
         self.dirty = True
 
-    def store(self, name, timehashpairs):
+    def store(self, name, timehashpairs, density):
         """ Store a list of hashes in the hash table
             associated with a particular name (or integer ID) and time.
         """
@@ -154,6 +155,7 @@ class HashTable(object):
         self.hashesperid[id_] += len(timehashpairs)
         # print(track_duration, type(track_duration))
         self.durationperiod[id_] += duration
+        self.densityperid[id_] += density
         # Mark as unsaved
         self.dirty = True
 
@@ -264,6 +266,7 @@ class HashTable(object):
         self.names = temp.names
         self.hashesperid = np.array(temp.hashesperid).astype(np.uint32)
         self.durationperiod = np.array(temp.durationperiod).astype(np.float32)
+        self.densityperid = np.array(temp.densityperid).astype(np.float32)
         self.dirty = False
         self.params = params
 
@@ -301,6 +304,7 @@ class HashTable(object):
                       for val in mht['HashTableNames'][0]]
         self.hashesperid = np.array(mht['HashTableLengths'][0]).astype(np.uint32)
         self.durationperiod = np.array(mht['HashTableDurations'][0]).astype(np.float32)
+        self.densityperid = np.array(mht['HashTableDensities'][0]).astype(np.float32)
         # Matlab uses 1-origin for the IDs in the hashes, but the Python code
         # also skips using id_ 0, so that names[0] corresponds to id_ 1.
         # Otherwise unmodified database
@@ -321,6 +325,7 @@ class HashTable(object):
         self.names += ht.names
         self.hashesperid = np.append(self.hashesperid, ht.hashesperid)
         self.durationperiod = np.append(self.durationperiod, ht.durationperiod)
+        self.densityperid = np.append(self.densityperid, ht.densityperid)
         # Shift all the IDs in the second table down by ncurrent
         idoffset = (1 << self.maxtimebits) * ncurrent
         for hash_ in np.nonzero(ht.counts)[0]:
@@ -359,10 +364,12 @@ class HashTable(object):
                     self.names[id_] = name
                     self.hashesperid[id_] = 0
                     self.durationperiod[id_] = (name)
+                    self.densityperid[id_] = -1
                 except ValueError:
                     self.names.append(name)
                     self.hashesperid = np.append(self.hashesperid, [0])
                     self.durationperiod = np.append(self.durationperiod, [0])
+                    self.densityperid = np.append(self.densityperid, [-1])
             id_ = self.names.index(name)
         else:
             # we were passed in a numerical id
@@ -387,6 +394,7 @@ class HashTable(object):
         self.names[id_] = None
         self.hashesperid[id_] = 0
         self.durationperiod[id_] = 0
+        self.densityperid[id_] = 0
         self.dirty = True
         print("Removed", name, "(", hashes_removed, "hashes).")
 
@@ -413,6 +421,6 @@ class HashTable(object):
         """ List all the known items. """
         if not print_fn:
             print_fn = print
-        for name, count, duration in zip(self.names, self.hashesperid, self.durationperiod):
+        for name, count, duration, density in zip(self.names, self.hashesperid, self.durationperiod, self.densityperid):
             if name:
-                print_fn("track: \'{}\' hash_count: {} duration: {}s density: {}".format(name, str(count), duration, str(float(count)/duration)))
+                print_fn("track: \'{}\' hash_count: {} duration: {}s real_density: {} fingerprinted_density: {}".format(name, str(count), duration, str(float(count)/duration), density))

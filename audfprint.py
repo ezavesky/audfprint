@@ -126,7 +126,7 @@ def make_ht_from_list(analyzer, filelist, hashbits, depth, maxtime, pipe=None):
     # Add in the files
     for filename in filelist:
         hashes = analyzer.wavfile2hashes(filename)
-        ht.store(filename, hashes)
+        ht.store(filename, hashes, analyzer.density)
     # Pass back to caller
     if pipe:
         pipe.send(ht)
@@ -168,7 +168,7 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         ix = 0
         for filename in filename_iter:
             report([time.ctime() + " ingesting #" + str(ix) +" : "
-                    + filename + " "+ str(hash_table.fileduration(filename))+"s ..."])
+                    + filename + " "+ str(hash_table.track_duration(filename))+"s ..."])
             dur, nhash = analyzer.ingest(hash_tab, filename)
             tothashes += nhash
             ix += 1

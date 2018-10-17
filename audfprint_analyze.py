@@ -454,7 +454,7 @@ class Analyzer(object):
         #                                                     n_fft=n_fft,
         #                                                     n_hop=n_hop)))
         hashes = self.wavfile2hashes(filename)
-        hashtable.store(filename, hashes)
+        hashtable.store(filename, hashes, self.density)
         # return (len(d)/float(sr), len(hashes))
         # return (np.max(hashes, axis=0)[0]*n_hop/float(sr), len(hashes))
         # soundfiledur is set up in wavfile2hashes, use result here
