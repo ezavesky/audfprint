@@ -77,6 +77,7 @@ class HashTable(object):
             self.hashbits = hashbits
             self.depth = depth
             self.maxtimebits = _bitsfor(maxtime)
+            self.density=0
             # allocate the big table
             size = 2 ** hashbits
             self.table = np.zeros((size, depth), dtype=np.uint32)
@@ -414,4 +415,4 @@ class HashTable(object):
             print_fn = print
         for name, count, duration in zip(self.names, self.hashesperid, self.durationperiod):
             if name:
-                print_fn("{} ( {} hashes) ( {} s)".format(name, str(count), duration))
+                print_fn("track: \'{}\' hash_count: {} duration: {}s density: {}".format(name, str(count), duration, str(float(count)/duration)))
