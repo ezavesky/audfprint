@@ -498,9 +498,10 @@ class Matcher(object):
                         o['querymatchlength'] = (max_time - min_time) * t_hop
                         o['querymatchstartsat'] = min_time * t_hop
                         o['trackmatchstartsat'] = (min_time + aligntime) * t_hop
-                    # else:
+                    else:
                         # msg = "Matched {:s} as {:s} at {:6.1f} s".format(
                         #         qrymsg, ht.names[tophitid], aligntime * t_hop)
+                        o['querymatchstartsat'] = aligntime * t_hop
                         # o['track'] = ht.names[tophitid]
                     o['coverage'] = dur/ht.durationperiod[tophitid]
                     # msg += (" with {:5d} of {:5d} common hashes"
@@ -508,12 +509,14 @@ class Matcher(object):
                     #         nhashaligned, nhashraw, rank)
                     o['totaltracksanalyzed'] = rank
                     o['confidence'] = nhashaligned/nhashraw
+                    o['totalfingerprintsanalyzed'] = nhashraw
                     # msgrslt.append(msg)
                 # else:
                 #     msgrslt.append(qrymsg + "\t" + ht.names[tophitid])
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
-
+        track_hashes = ht.retrieve(o['track'])
+        print(len(track_hashes))
         return '', o
 
     def illustrate_match(self, analyzer, ht, filename):
@@ -521,7 +524,7 @@ class Matcher(object):
             plotted over a spectrogram """
         # Make the spectrogram
         # d, sr = librosa.load(filename, sr=analyzer.target_sr)
-        print('filename', filename)
+        print('filename', filename, ht)
         d, sr = audio_read.audio_read(filename, sr=analyzer.target_sr, channels=1)
         sgram = np.abs(librosa.stft(d, n_fft=analyzer.n_fft,
                                     hop_length=analyzer.n_hop,
@@ -542,8 +545,10 @@ class Matcher(object):
                                  cmap='gray_r', vmin=-80.0, vmax=0)
         # Do the match?
         q_hashes = analyzer.wavfile2hashes(filename)
+        # q_hashes = ht.retrieve('tests/data/Nine_Lives/californication.mp3')#o['track'])
         # Run query, get back the hashes for match zero
         results, matchhashes = self.match_hashes(ht, q_hashes, hashesfor=0)
+        print(len(results))
         if self.sort_by_time:
             results = sorted(results, key=lambda x: -x[2])
         # Convert the hashes to landmarks

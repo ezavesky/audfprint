@@ -159,8 +159,8 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         for num, filename in enumerate(filename_iter):
             msgs = matcher.file_match_to_msgs(analyzer, hash_tab, filename, num)
             report(msgs)
-            # msgs = matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
-            # report(msgs)
+            msgs = matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
+            report(msgs)
 
     elif cmd == 'new' or cmd == 'add':
         # Adding files
