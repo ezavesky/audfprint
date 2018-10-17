@@ -167,9 +167,9 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         tothashes = 0
         ix = 0
         for filename in filename_iter:
-            report([time.ctime() + " ingesting #" + str(ix) +" : "
-                    + filename + " "+ str(hash_table.track_duration(filename))+"s ..."])
             dur, nhash = analyzer.ingest(hash_tab, filename)
+            # report([time.ctime() + " ingesting #" + str(ix) +" : "+ filename + " "+ str(hash_table.track_duration(filename))+"s ..."+str(nhash/dur)+"hashes/s"])
+            report(["{} ingesting # {} : track: {} duration: {}s density: {} hashes/s".format(time.ctime(), str(ix), filename, str(hash_table.track_duration(filename)), str(nhash/dur))])
             tothashes += nhash
             ix += 1
 

@@ -573,7 +573,7 @@ def glob2hashtable(pattern, density=20.0):
     totdur = 0.0
     tothashes = 0
     for ix, file_ in enumerate(filelist):
-        print(time.ctime(), "ingesting #", ix, ":", file_, track_duration(ix), "...")
+        print(time.ctime(), "ingesting #", ix, ":", file_, track_duration(ix), ht.densityperid[ix], "...")
         dur, nhash = g2h_analyzer.ingest(ht, file_)
         totdur += dur
         tothashes += nhash
