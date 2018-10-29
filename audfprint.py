@@ -483,7 +483,7 @@ def main(argv):
                strip_prefix=args['--wavdir'])
 
     elapsedtime = time.clock() - initticks
-    if analyzer and analyzer.soundfiletotaldur > 0.:
+    if analyzer and analyzer.soundfiletotaldur > 0. and not args['--verbose']:
         print("Processed "
               + "%d files (%.1f s total dur) in %.1f s sec = %.3f x RT" \
               % (analyzer.soundfilecount, analyzer.soundfiletotaldur,

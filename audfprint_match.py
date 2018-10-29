@@ -10,30 +10,30 @@ Fingerprint matching code for audfprint
 Output:
 
     Track - matched track from the datastore
-    QueryMatchLength - returns how many query seconds matched the resulting track
-    QueryMatchStartsAt - returns time position where resulting track started to match in the query
-    TrackMatchStartsAt - returns time position where the query started to match in the resulting track
-    TrackStartsAt - returns an approximation where does the matched track starts, always relative to the query
+    query_match_length - returns how many query seconds matched the resulting track
+    query_match_start_at - returns time position where resulting track started to match in the query
+    track_match_start_at - returns time position where the query started to match in the resulting track
+    track_start_at - returns an approximation where does the matched track starts, always relative to the query
     Coverage - returns a value between [0, 1], informing how much the query covered the resulting track (i.e. a 2 minutes query found a 30 seconds track within it, starting at 100th second, coverage will be equal to (120 - 100)/30 ~= 0.66)
     Confidence - returns a value between [0, 1]. A value below 0.15 is most probably a false positive. A value bigger than 0.15 is very likely to be an exact match. For good audio quality queries you can expect getting a confidence > 0.5.
     Stats contains useful statistics information for fine-tuning the algorithm:
-    QueryDuration - time in milliseconds spend just querying the fingerprints datasource.
-    FingerprintingDuration - time in milliseconds spent generating the acousting fingerprints from the media file.
-    TotalTracksAnalyzed - total # of tracks analyzed during query time. If this number exceeds 50, try optimizing your configuration.
-    TotalFingerprintsAnalyzed - total # of fingerprints analyzed during query time. If this number exceeds 500, try optimizing your configuration.
+    query_duration - time in milliseconds spend just querying the fingerprints datasource.
+    fingerprinting_duration - time in milliseconds spent generating the acousting fingerprints from the media file.
+    total_tracks_analyzed - total # of tracks analyzed during query time. If this number exceeds 50, try optimizing your configuration.
+    total_fingerprints_analyzed - total # of fingerprints analyzed during query time. If this number exceeds 500, try optimizing your configuration.
 
     o = {}
     o['track'] = ''
-    o['querymatchlength'] = 0.0
-    o['querymatchstartsat'] = 0.0
-    o['trackmatchstartsat'] = 0.0
-    o['trackstartsat'] = 0.0
+    o['query_match_length'] = 0.0
+    o['query_match_start_at'] = 0.0
+    o['track_match_start_at'] = 0.0
+    o['track_start_at'] = 0.0
     o['coverage'] = 0.0
     o['confidence'] = 0.0
-    o['queryduration'] = 0.0
-    o['fingerprintingduration'] = 0.0
-    o['totaltracksanalyzed'] = 0.0
-    o['totalfingerprintsanalyzed'] = 0.0
+    o['query_duration'] = 0.0
+    o['fingerprinting_duration'] = 0.0
+    o['total_tracks_analyzed'] = 0.0
+    o['total_fingerprints_analyzed'] = 0.0
 
 """
 from __future__ import division, print_function
@@ -148,7 +148,7 @@ class Matcher(object):
         self.max_alignments_per_id = 100
 
 
-        self.fingerprintingduration = 0.0
+        self.fingerprinting_duration = 0.0
 
     def _best_count_ids(self, hits, ht):
         """ Return the indexes for the ids with the best counts.
@@ -386,7 +386,7 @@ class Matcher(object):
         """
         tic = time.clock()
         q_hashes = analyzer.wavfile2hashes(filename)
-        self.fingerprintingduration = time.clock() - tic
+        self.fingerprinting_duration = time.clock() - tic
         # Fake durations as largest hash time
         if len(q_hashes) == 0:
             durd = 0.0
@@ -403,7 +403,7 @@ class Matcher(object):
         # Run query
         tic = time.clock()
         rslts = self.match_hashes(ht, q_hashes)
-        self.fingerprintingduration += time.clock() - tic
+        self.fingerprinting_duration += time.clock() - tic
 
         # Post filtering
         if self.sort_by_time:
@@ -454,24 +454,36 @@ class Matcher(object):
 
     def file_match_to_objs(self, analyzer, ht, qry, number=None):
         """ Perform a match on a single input file, return list
-            of utf-8 json objects """
+            of utf-8 json objects
+
+        track: Track (whatever has been fingerprinted) name
+        query_match_length: the length in seconds of how long the match has taken within the query.
+        query_match_start_at: the time in seconds when the match starts to occur in relation to the query time.
+        track_match_start_at: the time in seconds when the match starts to occur in relation to the track time.
+        track_start_at:
+        coverage: Percentage of the query duration against the matched track.
+        fingerprinting_duration: The sum of the time for fingerprinting the query.
+        query_duration: The length in seconds of the query in quest.
+        total_fingerprints_analyzed: The count of all the hits within the database in quest
+        total_tracks_analyzed: How many tracks have been hit through `total_fingerprints_analyzed`
+        """
 
         o = {}
         o['track'] = ''
-        o['querymatchlength'] = 0.0
-        o['querymatchstartsat'] = 0.0
-        o['trackmatchstartsat'] = 0.0
-        o['trackstartsat'] = 0.0
+        o['query_match_length'] = 0.0
+        o['query_match_start_at'] = 0.0
+        o['track_match_start_at'] = 0.0
+        o['track_start_at'] = 0.0
         o['coverage'] = 0.0
-        o['fingerprintingduration'] = self.fingerprintingduration
-        # print(self.fingerprintingduration)
+        o['fingerprinting_duration'] = self.fingerprinting_duration
+        # print(self.fingerprinting_duration)
         rslts, dur, nhash = self.match_file(analyzer, ht, qry, number)
         t_hop = analyzer.n_hop / analyzer.target_sr
         # print(rslts)
         # if self.verbose:
         #     qrymsg = qry + (' %.1f ' % dur) + "sec " + str(nhash) + " raw hashes"
-        o['queryduration'] = dur
-        o['totalfingerprintsanalyzed'] = nhash
+        o['query_duration'] = dur
+        o['total_fingerprints_analyzed'] = nhash
         # else:
         #     qrymsg = qry
 
@@ -495,28 +507,27 @@ class Matcher(object):
                                " to time {:6.1f} s in {:s}").format(
                                 (max_time - min_time) * t_hop, min_time * t_hop, qry,
                                 (min_time + aligntime) * t_hop, ht.names[tophitid])
-                        o['querymatchlength'] = (max_time - min_time) * t_hop
-                        o['querymatchstartsat'] = min_time * t_hop
-                        o['trackmatchstartsat'] = (min_time + aligntime) * t_hop
+                        o['query_match_length'] = (max_time - min_time) * t_hop
+                        o['query_match_start_at'] = min_time * t_hop
+                        o['track_match_start_at'] = (min_time + aligntime) * t_hop
                     else:
                         # msg = "Matched {:s} as {:s} at {:6.1f} s".format(
                         #         qrymsg, ht.names[tophitid], aligntime * t_hop)
-                        o['querymatchstartsat'] = aligntime * t_hop
+                        o['query_match_start_at'] = aligntime * t_hop
                         # o['track'] = ht.names[tophitid]
                     o['coverage'] = dur/ht.durationperiod[tophitid]
                     # msg += (" with {:5d} of {:5d} common hashes"
                     #         " at rank {:2d}").format(
                     #         nhashaligned, nhashraw, rank)
-                    o['totaltracksanalyzed'] = rank
+                    o['total_tracks_analyzed'] = rank
                     o['confidence'] = nhashaligned/nhashraw
-                    o['totalfingerprintsanalyzed'] = nhashraw
+                    o['total_fingerprints_analyzed'] = nhashraw
                     # msgrslt.append(msg)
                 # else:
                 #     msgrslt.append(qrymsg + "\t" + ht.names[tophitid])
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
         track_hashes = ht.retrieve(o['track'])
-        print(len(track_hashes))
         return o
 
     def illustrate_match(self, analyzer, ht, filename):
@@ -524,7 +535,6 @@ class Matcher(object):
             plotted over a spectrogram """
         # Make the spectrogram
         # d, sr = librosa.load(filename, sr=analyzer.target_sr)
-        print('filename', filename, ht)
         d, sr = audio_read.audio_read(filename, sr=analyzer.target_sr, channels=1)
         sgram = np.abs(librosa.stft(d, n_fft=analyzer.n_fft,
                                     hop_length=analyzer.n_hop,
@@ -545,18 +555,13 @@ class Matcher(object):
                                  cmap='gray_r', vmin=-80.0, vmax=0)
         # Do the match?
         q_hashes = analyzer.wavfile2hashes(filename)
-        # q_hashes = ht.retrieve('tests/data/Nine_Lives/californication.mp3')#o['track'])
         # Run query, get back the hashes for match zero
         results, matchhashes = self.match_hashes(ht, q_hashes, hashesfor=0)
-        print(len(results))
         if self.sort_by_time:
             results = sorted(results, key=lambda x: -x[2])
         # Convert the hashes to landmarks
         lms = audfprint_analyze.hashes2landmarks(q_hashes)
         mlms = audfprint_analyze.hashes2landmarks(matchhashes)
-        print(len(q_hashes))
-        print(len(lms))
-        print(len(mlms))
         # Overplot on the spectrogram
         plt.plot(np.array([[x[0], x[0] + x[3]] for x in lms]).T,
                  np.array([[x[1], x[2]] for x in lms]).T,
@@ -565,14 +570,13 @@ class Matcher(object):
                  np.array([[x[1], x[2]] for x in mlms]).T,
                  '.-r')
         # Add title
-        plt.title(" : Matched as " + ht.names[results[0][0]]
+        plt.title(filename + " : Matched as " + ht.names[results[0][0]]
                   + (" with %d of %d hashes" % (len(matchhashes),
                                                 len(q_hashes))))
         # Display
         plt.show()
         # Return
         return results
-
 
 def localtest():
     """Function to provide quick test"""

@@ -228,6 +228,7 @@ class HashTable(object):
         nhashes = sum(self.counts)
         # Report the proportion of dropped hashes (overfull table)
         dropped = nhashes - sum(np.minimum(self.depth, self.counts))
+        if args['--verbose']:
         print("Read fprints for", sum(n is not None for n in self.names),
               "files (", nhashes, "hashes) from", name,
               "(%.2f%% dropped)" % (100.0 * dropped / max(1, nhashes)))
