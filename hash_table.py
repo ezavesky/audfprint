@@ -423,4 +423,5 @@ class HashTable(object):
             print_fn = print
         for name, count, duration, density in zip(self.names, self.hashesperid, self.durationperiod, self.densityperid):
             if name:
-                print_fn("track: \'{}\' hash_count: {} duration: {}s real_density: {} fingerprinted_density: {}".format(name, str(count), duration, str(float(count)/duration), density))
+                # the purpose of this display is to improve fingreptinting parameter in order to compare across multiple batches
+                print_fn("track: \'{}\', hash_count[units]: {}, duration[s]: {}, real_density: {}, fingerprinted_density: {}".format(name, str(count), duration, str(float(count)/duration), density))

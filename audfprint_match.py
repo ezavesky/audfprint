@@ -517,7 +517,7 @@ class Matcher(object):
                     self.illustrate_match(analyzer, ht, qry)
         track_hashes = ht.retrieve(o['track'])
         print(len(track_hashes))
-        return '', o
+        return o
 
     def illustrate_match(self, analyzer, ht, filename):
         """ Show the query fingerprints and the matching ones

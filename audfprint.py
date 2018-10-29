@@ -157,10 +157,12 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
     elif cmd == 'match':
         # Running query, single-core mode
         for num, filename in enumerate(filename_iter):
-            msgs = matcher.file_match_to_msgs(analyzer, hash_tab, filename, num)
-            report(msgs)
-            msgs = matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
-            report(msgs)
+            if matcher.json:
+                obj = matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
+                print(obj)
+            else:
+                msgs = matcher.file_match_to_msgs(analyzer, hash_tab, filename, num)
+                report(msgs)
 
     elif cmd == 'new' or cmd == 'add':
         # Adding files
@@ -169,7 +171,7 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
         for filename in filename_iter:
             dur, nhash = analyzer.ingest(hash_tab, filename)
             # report([time.ctime() + " ingesting #" + str(ix) +" : "+ filename + " "+ str(hash_table.track_duration(filename))+"s ..."+str(nhash/dur)+"hashes/s"])
-            report(["{} ingesting # {} : track: {} duration: {}s density: {} hashes/s".format(time.ctime(), str(ix), filename, str(hash_table.track_duration(filename)), str(nhash/dur))])
+            report(["{} ingesting # {} : track: {}, duration[sec]: {}, density[hashes/sec]: {} ".format(time.ctime(), str(ix), filename, str(hash_table.track_duration(filename)), str(nhash//dur))])
             tothashes += nhash
             ix += 1
 
@@ -303,6 +305,7 @@ def setup_matcher(args):
     matcher.exact_count = args['--exact-count'] | args['--illustrate'] | args['--illustrate-hpf']
     matcher.illustrate = args['--illustrate'] | args['--illustrate-hpf']
     matcher.illustrate_hpf = args['--illustrate-hpf']
+    matcher.json = args['--json']
     matcher.verbose = args['--verbose']
     matcher.find_time_range = args['--find-time-range']
     matcher.time_quantile = float(args['--time-quantile'])
@@ -372,6 +375,7 @@ Options:
   -v <val>, --verbose <val>       Verbosity level [default: 1]
   -I, --illustrate                Make a plot showing the match
   -J, --illustrate-hpf            Plot the match, using onset enhancement
+  -O, --json                      Return json object instead of message
   -W <dir>, --wavdir <dir>        Find sound files under this dir [default: ]
   -V <ext>, --wavext <ext>        Extension to add to wav file names [default: ]
   --version                       Report version number
