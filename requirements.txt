@@ -3,8 +3,6 @@ numpy
 scipy
 docopt
 joblib
-psutil
-
 audioread
 matplotlib
 psutil
