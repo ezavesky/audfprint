@@ -55,4 +55,9 @@ docs/_build/
 fpstats
 fpmstats
 tmp.fpdb
+
+# Dev Stuff
 venv/
+tests/
+precomppkdir/
+queries/

@@ -228,7 +228,6 @@ class HashTable(object):
         nhashes = sum(self.counts)
         # Report the proportion of dropped hashes (overfull table)
         dropped = nhashes - sum(np.minimum(self.depth, self.counts))
-        if args['--verbose']:
         print("Read fprints for", sum(n is not None for n in self.names),
               "files (", nhashes, "hashes) from", name,
               "(%.2f%% dropped)" % (100.0 * dropped / max(1, nhashes)))
@@ -365,12 +364,12 @@ class HashTable(object):
                     self.names[id_] = name
                     self.hashesperid[id_] = 0
                     self.durationperiod[id_] = (name)
-                    self.densityperid[id_] = -1
+                    self.densityperid[id_] = 0
                 except ValueError:
                     self.names.append(name)
                     self.hashesperid = np.append(self.hashesperid, [0])
                     self.durationperiod = np.append(self.durationperiod, [0])
-                    self.densityperid = np.append(self.densityperid, [-1])
+                    self.densityperid = np.append(self.densityperid, [0])
             id_ = self.names.index(name)
         else:
             # we were passed in a numerical id
@@ -423,6 +422,10 @@ class HashTable(object):
         if not print_fn:
             print_fn = print
         for name, count, duration, density in zip(self.names, self.hashesperid, self.durationperiod, self.densityperid):
+            # the purpose of this display is to improve fingreptinting parameter in order to compare across multiple batches
             if name:
-                # the purpose of this display is to improve fingreptinting parameter in order to compare across multiple batches
-                print_fn("track: \'{}\', hash_count[units]: {}, duration[s]: {}, real_density: {}, fingerprinted_density: {}".format(name, str(count), duration, str(float(count)/duration), density))
+                if duration != 0 and duration > 0:
+                    real_density = str(float(count)/duration)
+                    print_fn("track: \'{}\', hash_count[units]: {}, duration[s]: {}, real_density: {}, fingerprinted_density: {}".format(name, str(count), duration, real_density, density))
+                else:
+                    print_fn("track: \'{}\', hash_count[units]: {}, duration[s]: {}, fingerprinted_density: {}".format(name, str(count), duration, density))
