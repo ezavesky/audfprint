@@ -375,7 +375,7 @@ Options:
   -v <val>, --verbose <val>       Verbosity level [default: 1]
   -I, --illustrate                Make a plot showing the match
   -J, --illustrate-hpf            Plot the match, using onset enhancement
-  -O, --json                      Return json object instead of message
+  -O, --json                      Return json object instead of string
   -W <dir>, --wavdir <dir>        Find sound files under this dir [default: ]
   -V <ext>, --wavext <ext>        Extension to add to wav file names [default: ]
   --version                       Report version number

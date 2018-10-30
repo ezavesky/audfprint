@@ -456,16 +456,33 @@ class Matcher(object):
         """ Perform a match on a single input file, return list
             of utf-8 json objects
 
-        track: Track (whatever has been fingerprinted) name
-        query_match_length: the length in seconds of how long the match has taken within the query.
-        query_match_start_at: the time in seconds when the match starts to occur in relation to the query time.
-        track_match_start_at: the time in seconds when the match starts to occur in relation to the track time.
-        track_start_at:
-        coverage: Percentage of the query duration against the matched track.
-        fingerprinting_duration: The sum of the time for fingerprinting the query.
-        query_duration: The length in seconds of the query in quest.
-        total_fingerprints_analyzed: The count of all the hits within the database in quest
-        total_tracks_analyzed: How many tracks have been hit through `total_fingerprints_analyzed`
+        track:
+            Name of the Track.
+
+        query_match_length:
+            The length in seconds of how long the measure/match has taken within the query.
+
+        query_match_start_at:
+            The time in seconds when the match starts to occur in relation to the query time.
+
+        track_match_start_at:
+            The time in seconds when the match starts to occur in relation to the track time.
+
+        coverage:
+            Percentage of the query duration in relation to the matched track duration.
+
+        fingerprinting_duration:
+            How long it has take to fingerprint the query.
+
+        query_duration:
+            The length of the query in seconds.
+
+        total_fingerprints_analyzed:
+            The count of all the hits within the database in quest.
+
+        total_tracks_analyzed:
+            How many tracks have been hit through `total_fingerprints_analyzed`
+
         """
 
         o = {}
@@ -473,20 +490,12 @@ class Matcher(object):
         o['query_match_length'] = 0.0
         o['query_match_start_at'] = 0.0
         o['track_match_start_at'] = 0.0
-        o['track_start_at'] = 0.0
         o['coverage'] = 0.0
         o['fingerprinting_duration'] = self.fingerprinting_duration
-        # print(self.fingerprinting_duration)
         rslts, dur, nhash = self.match_file(analyzer, ht, qry, number)
         t_hop = analyzer.n_hop / analyzer.target_sr
-        # print(rslts)
-        # if self.verbose:
-        #     qrymsg = qry + (' %.1f ' % dur) + "sec " + str(nhash) + " raw hashes"
         o['query_duration'] = dur
         o['total_fingerprints_analyzed'] = nhash
-        # else:
-        #     qrymsg = qry
-
         msgrslt = []
 
         if len(rslts) == 0:
@@ -511,20 +520,11 @@ class Matcher(object):
                         o['query_match_start_at'] = min_time * t_hop
                         o['track_match_start_at'] = (min_time + aligntime) * t_hop
                     else:
-                        # msg = "Matched {:s} as {:s} at {:6.1f} s".format(
-                        #         qrymsg, ht.names[tophitid], aligntime * t_hop)
                         o['query_match_start_at'] = aligntime * t_hop
-                        # o['track'] = ht.names[tophitid]
                     o['coverage'] = dur/ht.durationperiod[tophitid]
-                    # msg += (" with {:5d} of {:5d} common hashes"
-                    #         " at rank {:2d}").format(
-                    #         nhashaligned, nhashraw, rank)
                     o['total_tracks_analyzed'] = rank
                     o['confidence'] = nhashaligned/nhashraw
                     o['total_fingerprints_analyzed'] = nhashraw
-                    # msgrslt.append(msg)
-                # else:
-                #     msgrslt.append(qrymsg + "\t" + ht.names[tophitid])
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
         track_hashes = ht.retrieve(o['track'])
