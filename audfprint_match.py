@@ -484,14 +484,14 @@ class Matcher(object):
             How many tracks have been hit through `total_fingerprints_analyzed`
 
         """
-
         o = {}
-        o['track'] = ''
+        o['track'] = 'NOMATCH'
         o['query_match_length'] = 0.0
         o['query_match_start_at'] = 0.0
         o['track_match_start_at'] = 0.0
         o['coverage'] = 0.0
         o['fingerprinting_duration'] = self.fingerprinting_duration
+
         rslts, dur, nhash = self.match_file(analyzer, ht, qry, number)
         t_hop = analyzer.n_hop / analyzer.target_sr
         o['query_duration'] = dur
@@ -501,10 +501,6 @@ class Matcher(object):
         if len(rslts) == 0:
             # No matches returned at all
             nhashaligned = 0
-            if self.verbose:
-                o['track'] = 'NOMATCH'
-            else:
-                msgrslt.append(qrymsg + "\t")
         else:
             for (tophitid, nhashaligned, aligntime, nhashraw, rank,
                  min_time, max_time) in rslts:

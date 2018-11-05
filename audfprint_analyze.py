@@ -268,6 +268,7 @@ class Analyzer(object):
             n_hop/sr secs), second is the FFT bin (in units of sr/n_fft
             Hz).
         """
+
         if len(d) == 0:
             return []
 

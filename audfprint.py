@@ -288,7 +288,7 @@ def setup_analyzer(args):
     # set default value for shifts depending on mode
     if analyzer.shifts == 0:
         # Default shift is 4 for match, otherwise 1
-        analyzer.shifts = 4 if args['match'] else 1
+        analyzer.shifts = 4 if args.get('match') else 1
     analyzer.fail_on_error = not args['--continue-on-error']
     return analyzer
 
@@ -305,7 +305,7 @@ def setup_matcher(args):
     matcher.exact_count = args['--exact-count'] | args['--illustrate'] | args['--illustrate-hpf']
     matcher.illustrate = args['--illustrate'] | args['--illustrate-hpf']
     matcher.illustrate_hpf = args['--illustrate-hpf']
-    matcher.json = args['--json']
+    matcher.json = args.get('--json')
     matcher.verbose = args['--verbose']
     matcher.find_time_range = args['--find-time-range']
     matcher.time_quantile = float(args['--time-quantile'])
