@@ -422,12 +422,6 @@ class Analyzer(object):
             ]).astype(np.int32)
             hashes = unique_hashes
             # Or simply np.unique(query_hashes, axis=0) for numpy >= 1.13
-
-        # print("wavfile2hashes: read", len(hashes), "hashes from", filename)
-        # os.
-        filename, ext = os.path.splitext(os.path.basename(filename))
-        with open('tests/csv/'+filename+'.csv', 'w') as f:
-            print('\n'.join(['{}, {}'.format(hash[0], hash[1]) for hash in hashes]), file=f)
         return hashes
 
     # ########## functions to link to actual hash table index database ###### #
