@@ -13,6 +13,7 @@ import glob  # For glob2hashtable, localtester
 import os
 import struct  # For reading/writing hashes to file
 import time  # For glob2hashtable, localtester
+import gzip  # for compressed file writing
 
 import numpy as np
 import scipy.signal
@@ -22,11 +23,12 @@ import hash_table  # For utility, glob2hashtable
 import stft
 
 
+
 # ############### Globals ############### #
 # Special extension indicating precomputed fingerprint
-PRECOMPEXT = '.afpt'
+PRECOMPEXT = '.afptz'
 # A different precomputed fingerprint is just the peaks
-PRECOMPPKEXT = '.afpk'
+PRECOMPPKEXT = '.afpkz'
 
 
 def locmax(vec, indices=False):
@@ -458,10 +460,12 @@ HASH_MAGIC = b'audfprinthashV00'  # 16 chars, FWIW
 PEAK_FMT = '<2i'
 PEAK_MAGIC = b'audfprintpeakV00'  # 16 chars, FWIW
 
+def is_compressed_ext(filename):
+    return filename[-1]=='z'
 
 def hashes_save(hashfilename, hashes):
     """ Write out a list of (time, hash) pairs as 32 bit ints """
-    with open(hashfilename, 'wb') as f:
+    with gzip.open(hashfilename, 'wb') if is_compressed_ext(hashfilename) else open(hashfilename, 'wb') as f:
         f.write(HASH_MAGIC)
         for time_, hash_ in hashes:
             f.write(struct.pack(HASH_FMT, time_, hash_))
@@ -471,7 +475,7 @@ def hashes_load(hashfilename):
     """ Read back a set of hashes written by hashes_save """
     hashes = []
     fmtsize = struct.calcsize(HASH_FMT)
-    with open(hashfilename, 'rb') as f:
+    with gzip.open(hashfilename, 'rb') if is_compressed_ext(hashfilename) else open(hashfilename, 'wb') as f:
         magic = f.read(len(HASH_MAGIC))
         if magic != HASH_MAGIC:
             raise IOError('%s is not a hash file (magic %s)'
@@ -485,7 +489,7 @@ def hashes_load(hashfilename):
 
 def peaks_save(peakfilename, peaks):
     """ Write out a list of (time, bin) pairs as 32 bit ints """
-    with open(peakfilename, 'wb') as f:
+    with gzip.open(peakfilename, 'wb') if is_compressed_ext(peakfilename) else open(peakfilename, 'wb') as f:
         f.write(PEAK_MAGIC)
         for time_, bin_ in peaks:
             f.write(struct.pack(PEAK_FMT, time_, bin_))
@@ -495,7 +499,7 @@ def peaks_load(peakfilename):
     """ Read back a set of (time, bin) pairs written by peaks_save """
     peaks = []
     fmtsize = struct.calcsize(PEAK_FMT)
-    with open(peakfilename, 'rb') as f:
+    with gzip.open(peakfilename, 'rb') if is_compressed_ext(peakfilename) else open(peakfilename, 'wb') as f:
         magic = f.read(len(PEAK_MAGIC))
         if magic != PEAK_MAGIC:
             raise IOError('%s is not a peak file (magic %s)'

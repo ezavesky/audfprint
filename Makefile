@@ -33,14 +33,14 @@ test_onecore_precomp: precompdir
 	${AUDFPRINT} new --dbase fpdbase0.pklz precompdir/Nine_Lives/0*
 	${AUDFPRINT} new --dbase fpdbase1.pklz precompdir/Nine_Lives/1*
 	${AUDFPRINT} merge --dbase fpdbase1.pklz fpdbase0.pklz
-	${AUDFPRINT} match --dbase fpdbase1.pklz precompdir/query.afpt
+	${AUDFPRINT} match --dbase fpdbase1.pklz precompdir/query.afptz
 
 test_onecore_newmerge: precompdir
 	${AUDFPRINT} new --dbase fpdbase0.pklz precompdir/Nine_Lives/0*
 	${AUDFPRINT} new --dbase fpdbase1.pklz precompdir/Nine_Lives/1*
 	rm -f fpdbase2.pklz
 	${AUDFPRINT} newmerge --dbase fpdbase2.pklz fpdbase0.pklz fpdbase1.pklz
-	${AUDFPRINT} match --dbase fpdbase2.pklz precompdir/query.afpt
+	${AUDFPRINT} match --dbase fpdbase2.pklz precompdir/query.afptz
 
 precompdir: audfprint.py audfprint_analyze.py audfprint_match.py hash_table.py
 	rm -rf precompdir
@@ -52,7 +52,7 @@ test_onecore_precomppk: precomppkdir
 	${AUDFPRINT} new --dbase fpdbase0.pklz precomppkdir/Nine_Lives/0*
 	${AUDFPRINT} new --dbase fpdbase1.pklz precomppkdir/Nine_Lives/1*
 	${AUDFPRINT} merge --dbase fpdbase1.pklz fpdbase0.pklz
-	${AUDFPRINT} match --dbase fpdbase1.pklz precomppkdir/query.afpk
+	${AUDFPRINT} match --dbase fpdbase1.pklz precomppkdir/query.afpkz
 	rm -rf precomppkdir
 
 precomppkdir: audfprint.py audfprint_analyze.py audfprint_match.py hash_table.py
@@ -72,7 +72,7 @@ test_mucore_precomp: precompdir_mu
 	${AUDFPRINT} new --dbase fpdbase_mu0.pklz --ncores 4 precompdir_mu/Nine_Lives/0*
 	${AUDFPRINT} new --dbase fpdbase_mu.pklz --ncores 4 precompdir_mu/Nine_Lives/1*
 	${AUDFPRINT} merge --dbase fpdbase_mu.pklz fpdbase_mu0.pklz
-	${AUDFPRINT} match --dbase fpdbase_mu.pklz --ncores 4 precompdir_mu/query.afpt precompdir_mu/query.afpt precompdir_mu/query.afpt precompdir_mu/query.afpt precompdir_mu/query.afpt precompdir_mu/query.afpt precompdir_mu/query.afpt
+	${AUDFPRINT} match --dbase fpdbase_mu.pklz --ncores 4 precompdir_mu/query.afptz precompdir_mu/query.afptz precompdir_mu/query.afptz precompdir_mu/query.afptz precompdir_mu/query.afptz precompdir_mu/query.afptz precompdir_mu/query.afptz
 
 precompdir_mu: audfprint.py audfprint_analyze.py audfprint_match.py hash_table.py
 	rm -rf precompdir_mu
