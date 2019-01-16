@@ -325,6 +325,8 @@ def setup_reporter(args):
     opfile = args['--opfile']
     if opfile and len(opfile):
         if args['--json']:  # if args is JSON file, we need to serialize for each arg set
+            if os.path.exists(opfile):  # following spirit of text-output, clobber existing file
+                os.unlink(opfile)
             def report(msglist, is_data=False):
                 """Log messages to a particular output file"""
                 # right now, if it's a string, dump to console, otherwise we assume 
