@@ -1,11 +1,15 @@
 # coding=utf-8
 import cProfile
 import pstats
+import os, sys  # for local testing
+
+if __name__ == "__main__":
+    sys.path.insert(0, os.path.abspath('..'))
 
 # noinspection PyUnresolvedReferences
 import audfprint
 
-argv = ["audfprint", "new", "-d", "tmp.fpdb", "--density", "200",
+argv = ["audfprint", "new", "-d", "fpdbase.pklz", "--density", "200",
         "data/Nine_Lives/01-Nine_Lives.mp3",
         "data/Nine_Lives/02-Falling_In_Love.mp3",
         "data/Nine_Lives/03-Hole_In_My_Soul.mp3",
@@ -26,3 +30,4 @@ p = pstats.Stats('fpstats')
 
 p.sort_stats('time')
 p.print_stats(10)
+
