@@ -17,6 +17,7 @@ import time  # For reporting progress time
 
 import docopt  # For command line interface
 import joblib  # for match
+import json
 
 import audfprint_analyze  # The actual analyzer class/code
 import audfprint_match  # Access to match functions, used in command line interface
@@ -165,12 +166,8 @@ def do_cmd(cmd, analyzer, hash_tab, filename_iter, matcher, outdir, type, report
     elif cmd == 'match':
         # Running query, single-core mode
         for num, filename in enumerate(filename_iter):
-            if matcher.json:
-                obj = matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
-                print(obj)
-            else:
-                msgs = matcher.file_match_to_msgs(analyzer, hash_tab, filename, num)
-                report(msgs)
+            results = matcher_file_match(matcher, analyzer, hash_tab, filename, num)
+            report(results, True)
 
     elif cmd == 'new' or cmd == 'add':
         # Adding files
@@ -237,9 +234,11 @@ def multiproc_add(analyzer, hash_tab, filename_iter, report, ncores):
         pr[core].join()
 
 
-def matcher_file_match_to_msgs(matcher, analyzer, hash_tab, filename):
+def matcher_file_match(matcher, analyzer, hash_tab, filename, num=None):
     """Cover for matcher.file_match_to_msgs so it can be passed to joblib"""
-    return matcher.file_match_to_msgs(analyzer, hash_tab, filename)
+    if matcher.json:    # add for json parsing
+        return matcher.file_match_to_objs(analyzer, hash_tab, filename, num)
+    return matcher.file_match_to_msgs(analyzer, hash_tab, filename, num)
 
 
 def do_cmd_multiproc(cmd, analyzer, hash_tab, filename_iter, matcher,
@@ -261,12 +260,12 @@ def do_cmd_multiproc(cmd, analyzer, hash_tab, filename_iter, matcher,
         msgslist = joblib.Parallel(n_jobs=ncores)(
                 # Would use matcher.file_match_to_msgs(), but you
                 # can't use joblib on an instance method
-                joblib.delayed(matcher_file_match_to_msgs)(matcher, analyzer,
-                                                           hash_tab, filename)
+                joblib.delayed(matcher_file_match)(matcher, analyzer,
+                                                    hash_tab, filename)
                 for filename in filename_iter
         )
         for msgs in msgslist:
-            report(msgs)
+            report(msgs, True)
 
     elif cmd == 'new' or cmd == 'add':
         # We add by forking multiple parallel threads each running
@@ -325,12 +324,21 @@ def setup_reporter(args):
     """ Creates a logging function, either to stderr or file"""
     opfile = args['--opfile']
     if opfile and len(opfile):
-        f = open(opfile, "w")
-
-        def report(msglist):
-            """Log messages to a particular output file"""
-            for msg in msglist:
-                f.write(msg + "\n")
+        if args['--json']:  # if args is JSON file, we need to serialize for each arg set
+            def report(msglist, is_data=False):
+                """Log messages to a particular output file"""
+                # right now, if it's a string, dump to console, otherwise we assume 
+                # it's a friendly object and pass through to JSON append function
+                if not is_data:
+                    print(msglist)
+                else:
+                    audfprint_match.json_append_objs(opfile, msglist)
+        else:
+            f = open(opfile, "w")
+            def report(msglist, is_data=False):
+                """Log messages to a particular output file"""
+                for msg in msglist:
+                    f.write(msg + "\n")
     else:
         def report(msglist):
             """Log messages by printing to stdout"""

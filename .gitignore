@@ -61,3 +61,6 @@ venv/
 tests/
 precomppkdir/
 queries/
+
+# OS objects
+.DS_Store

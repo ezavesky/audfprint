@@ -120,6 +120,35 @@ def find_modes(data, threshold=5, window=0):
     return localmaxes + datamin, fullvector[localmaxes]
 
 
+def json_append_objs(filename, msg_objs):
+    """ Attempt to append several message objects in JSON format.  First,
+        grab a swap file to indicate a write-lock.  Second, prepend existing
+        data.  Third, rename/move the file to its original form.
+    """
+    num_loop = 0
+    opfile_swap = filename + ".swp"
+    while os.path.exists(opfile_swap):
+        if num_loop > 5:
+            raise IOError("Failed to retrieve JSON serialize lock for '{}' after {} attempts".format(opfile_swap, num_loop))
+        num_loop += 1
+        time.sleep(5)
+
+    with open(opfile_swap, 'w') as outfile:     # open swap file immediately
+        if os.path.exists(filename):            # if existing resources, load first, prepend
+            with open(filename, 'r') as infile:
+                try:
+                    json_objs = json.load(infile)
+                except json.decoder.JSONDecodeError as e:
+                    outfile.close()
+                    os.unlink(opfile_swap)
+                    raise IOError("Failed to parse JSON file '{}' during output append".format(filename))
+                msg_objs = json_objs + msg_objs
+        json.dump(msg_objs, outfile, indent=4)  # dump to file handle, pretty printing
+    if os.path.exists(filename):                # only remove when new swap done
+        os.unlink(filename)
+    os.rename(opfile_swap, filename)            # finally, rename swap to real resource
+
+
 class Matcher(object):
     """Provide matching for audfprint fingerprint queries to hash table"""
 
@@ -491,18 +520,9 @@ class Matcher(object):
             How many tracks have been hit through `total_fingerprints_analyzed`
 
         """
-        o = {}
-        o['track'] = 'NOMATCH'
-        o['query_match_length'] = 0.0
-        o['query_match_start_at'] = 0.0
-        o['track_match_start_at'] = 0.0
-        o['coverage'] = 0.0
-        o['fingerprinting_duration'] = self.fingerprinting_duration
 
         rslts, dur, nhash = self.match_file(analyzer, ht, qry, number)
         t_hop = analyzer.n_hop / analyzer.target_sr
-        o['query_duration'] = dur
-        o['total_fingerprints_analyzed'] = nhash
         msgrslt = []
 
         if len(rslts) == 0:
@@ -511,8 +531,18 @@ class Matcher(object):
         else:
             for (tophitid, nhashaligned, aligntime, nhashraw, rank,
                  min_time, max_time) in rslts:
-                # figure the number of raw and aligned matches for top hit
+
+                # figure the number of raw and aligned matches for all hits
+                o = {}
                 o['track'] = ht.names[tophitid]
+                o['query_match_length'] = 0.0
+                o['query_match_start_at'] = 0.0
+                o['track_match_start_at'] = 0.0
+                o['coverage'] = 0.0
+                o['fingerprinting_duration'] = self.fingerprinting_duration
+                o['query_duration'] = dur
+                o['total_fingerprints_analyzed'] = nhash
+
                 if self.verbose:
                     if self.find_time_range:
                         msg = ("Matched {:6.1f} s starting at {:6.1f} s in {:s}"
@@ -525,13 +555,13 @@ class Matcher(object):
                     else:
                         o['query_match_start_at'] = aligntime * t_hop
                     o['coverage'] = dur/ht.durationperiod[tophitid]
-                    o['total_tracks_analyzed'] = rank
+                    o['total_tracks_analyzed'] = int(rank)  # cast from np.int33
                     o['confidence'] = nhashaligned/nhashraw
-                    o['total_fingerprints_analyzed'] = nhashraw
+                    o['total_fingerprints_analyzed'] = int(nhashraw)  # cast from np.int33
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
-        track_hashes = ht.retrieve(o['track'])
-        return o
+                msgrslt.append(o)
+        return msgrslt
 
     def illustrate_match(self, analyzer, ht, filename):
         """ Show the query fingerprints and the matching ones
