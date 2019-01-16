@@ -41,15 +41,19 @@ import os
 import time
 
 import psutil
-import matplotlib.pyplot as plt
-import librosa
-import librosa.display
 import numpy as np
 import scipy.signal
 
+# Don't sweat failure to import graphics support.
+try:
+    import matplotlib.pyplot as plt
+    import librosa.display
+except:
+    pass
+
 import audfprint_analyze  # for localtest and illustrate
 import audio_read
-
+import stft
 
 import json
 def process_info():
@@ -209,8 +213,11 @@ class Matcher(object):
         #                     for row in np.nonzero(hits[:, 0]==id)[0]
         #                     if mode - self.window <= hits[row, 1]
         #                     and hits[row, 1] <= mode + self.window)
-        match_times = hits[np.logical_and(hits[:, 1] >= minoffset,
-                                          hits[:, 1] <= maxoffset), 3]
+        match_times = hits[np.logical_and.reduce([
+            hits[:, 1] >= minoffset,
+            hits[:, 1] <= maxoffset,
+            hits[:, 0] == id
+        ]), 3]
         min_time = match_times[int(len(match_times) * self.time_quantile)]
         max_time = match_times[int(len(match_times) * (1.0 - self.time_quantile)) - 1]
         # log("_calc_time_ranges: len(hits)={:d} id={:d} mode={:d} matches={:d} min={:d} max={:d}".format(
@@ -532,9 +539,9 @@ class Matcher(object):
         # Make the spectrogram
         # d, sr = librosa.load(filename, sr=analyzer.target_sr)
         d, sr = audio_read.audio_read(filename, sr=analyzer.target_sr, channels=1)
-        sgram = np.abs(librosa.stft(d, n_fft=analyzer.n_fft,
-                                    hop_length=analyzer.n_hop,
-                                    window=np.hanning(analyzer.n_fft + 2)[1:-1]))
+        sgram = np.abs(stft.stft(d, n_fft=analyzer.n_fft,
+                                 hop_length=analyzer.n_hop,
+                                 window=np.hanning(analyzer.n_fft + 2)[1:-1]))
         sgram = 20.0 * np.log10(np.maximum(sgram, np.max(sgram) / 1e6))
         sgram = sgram - np.mean(sgram)
         # High-pass filter onset emphasis

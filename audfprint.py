@@ -23,6 +23,14 @@ import audfprint_match  # Access to match functions, used in command line interf
 import hash_table  # My hash_table implementation
 
 
+if sys.version_info[0] >= 3:
+    # Python 3 specific definitions
+    time_clock = time.process_time
+else:
+    # Python 2 specific definitions
+    time_clock = time.clock
+
+
 def filename_list_iterator(filelist, wavdir, wavext, listflag):
     """ Iterator to yeild all the filenames, possibly interpreting them
         as list files, prepending wavdir """
@@ -405,7 +413,7 @@ def main(argv):
     report = setup_reporter(args)
 
     # Keep track of wall time
-    initticks = time.clock()
+    initticks = time_clock()
 
     # Command line sanity.
     if args["--maxtimebits"]:
