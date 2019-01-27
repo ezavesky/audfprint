@@ -10,30 +10,30 @@ Fingerprint matching code for audfprint
 Output:
 
     Track - matched track from the datastore
-    query_match_length - returns how many query seconds matched the resulting track
-    query_match_start_at - returns time position where resulting track started to match in the query
-    track_match_start_at - returns time position where the query started to match in the resulting track
-    track_start_at - returns an approximation where does the matched track starts, always relative to the query
-    Coverage - returns a value between [0, 1], informing how much the query covered the resulting track (i.e. a 2 minutes query found a 30 seconds track within it, starting at 100th second, coverage will be equal to (120 - 100)/30 ~= 0.66)
-    Confidence - returns a value between [0, 1]. A value below 0.15 is most probably a false positive. A value bigger than 0.15 is very likely to be an exact match. For good audio quality queries you can expect getting a confidence > 0.5.
+    match_length - returns how many query seconds matched the resulting track
+    match_start - returns time position where resulting track started to match in the query
+    track_start - returns time position where the query started to match in the resulting track
+    track_coverage - returns a value between [0, 1], informing how much the query covered the resulting track (i.e. a 2 minutes query found a 30 seconds track within it, starting at 100th second, track_coverage will be equal to (120 - 100)/30 ~= 0.66)
+    match_confidence - returns a value between [0, 1]. A value below 0.15 is most probably a false positive. A value bigger than 0.15 is very likely to be an exact match. For good audio quality queries you can expect getting a match_confidence > 0.5.
+    
     Stats contains useful statistics information for fine-tuning the algorithm:
     query_duration - time in milliseconds spend just querying the fingerprints datasource.
-    fingerprinting_duration - time in milliseconds spent generating the acousting fingerprints from the media file.
-    total_tracks_analyzed - total # of tracks analyzed during query time. If this number exceeds 50, try optimizing your configuration.
-    total_fingerprints_analyzed - total # of fingerprints analyzed during query time. If this number exceeds 500, try optimizing your configuration.
+    match_time - time in milliseconds spent generating the acousting fingerprints from the media file.
+    match_rank - total # of tracks analyzed during query time. If this number exceeds 50, try optimizing your configuration.
+    match_fingerprints - total # of fingerprints analyzed during query time. If this number exceeds 500, try optimizing your configuration.
+    query_fingerprints - total # of fingerprints for the query file
 
     o = {}
     o['track'] = ''
-    o['query_match_length'] = 0.0
-    o['query_match_start_at'] = 0.0
-    o['track_match_start_at'] = 0.0
-    o['track_start_at'] = 0.0
-    o['coverage'] = 0.0
-    o['confidence'] = 0.0
+    o['match_length'] = 0.0
+    o['match_start'] = 0.0
+    o['track_start'] = 0.0
+    o['track_coverage'] = 0.0
+    o['match_confidence'] = 0.0
     o['query_duration'] = 0.0
-    o['fingerprinting_duration'] = 0.0
-    o['total_tracks_analyzed'] = 0.0
-    o['total_fingerprints_analyzed'] = 0.0
+    o['match_time'] = 0.0
+    o['match_rank'] = 0.0
+    o['match_fingerprints'] = 0.0
 
 """
 from __future__ import division, print_function
@@ -181,7 +181,7 @@ class Matcher(object):
         self.max_alignments_per_id = 100
 
 
-        self.fingerprinting_duration = 0.0
+        self.match_time = 0.0
 
     def _best_count_ids(self, hits, ht):
         """ Return the indexes for the ids with the best counts.
@@ -422,7 +422,7 @@ class Matcher(object):
         """
         tic = time.clock()
         q_hashes = analyzer.wavfile2hashes(filename)
-        self.fingerprinting_duration = time.clock() - tic
+        self.match_time = time.clock() - tic
         # Fake durations as largest hash time
         if len(q_hashes) == 0:
             durd = 0.0
@@ -439,7 +439,7 @@ class Matcher(object):
         # Run query
         tic = time.clock()
         rslts = self.match_hashes(ht, q_hashes)
-        self.fingerprinting_duration += time.clock() - tic
+        self.match_time += time.clock() - tic
 
         # Post filtering
         if self.sort_by_time:
@@ -495,29 +495,29 @@ class Matcher(object):
         track:
             Name of the Track.
 
-        query_match_length:
+        match_length:
             The length in seconds of how long the measure/match has taken within the query.
 
-        query_match_start_at:
+        match_start:
             The time in seconds when the match starts to occur in relation to the query time.
 
-        track_match_start_at:
+        track_start:
             The time in seconds when the match starts to occur in relation to the track time.
 
-        coverage:
+        track_coverage:
             Percentage of the query duration in relation to the matched track duration.
 
-        fingerprinting_duration:
+        match_time:
             How long it has take to fingerprint the query.
 
         query_duration:
             The length of the query in seconds.
 
-        total_fingerprints_analyzed:
+        match_fingerprints:
             The count of all the hits within the database in quest.
 
-        total_tracks_analyzed:
-            How many tracks have been hit through `total_fingerprints_analyzed`
+        match_rank:
+            How many tracks have been hit through `match_fingerprints`
 
         """
 
@@ -535,24 +535,23 @@ class Matcher(object):
                 # figure the number of raw and aligned matches for all hits
                 o = {}
                 o['track'] = ht.names[tophitid]
-                o['query_match_length'] = 0.0
-                o['query_match_start_at'] = 0.0
-                o['track_match_start_at'] = 0.0
-                o['coverage'] = 0.0
-                o['fingerprinting_duration'] = self.fingerprinting_duration
+                o['match_length'] = 0.0
+                o['match_start'] = 0.0
+                o['track_start'] = 0.0
+                o['match_time'] = self.match_time  # consistent with class
                 o['query_duration'] = dur
-                o['total_fingerprints_analyzed'] = nhash
-                o['coverage'] = dur/ht.durationperiod[tophitid]
-                o['total_tracks_analyzed'] = int(rank)  # cast from np.int33
-                o['confidence'] = nhashaligned/nhashraw
-                o['total_fingerprints_analyzed'] = int(nhashraw)  # cast from np.int33
+                o['query_fingerprints'] = nhash
+                o['match_rank'] = int(rank)  # cast from np.int33
+                o['match_fingerprints'] = int(nhashraw)  # cast from np.int33
+                o['match_confidence'] = nhashaligned/nhashraw
+                o['track_coverage'] = dur/ht.durationperiod[tophitid]
 
                 if self.find_time_range:
-                    o['query_match_length'] = (max_time - min_time) * t_hop
-                    o['query_match_start_at'] = min_time * t_hop
-                    o['track_match_start_at'] = (min_time + aligntime) * t_hop
+                    o['match_length'] = (max_time - min_time) * t_hop
+                    o['match_start'] = min_time * t_hop
+                    o['track_start'] = (min_time + aligntime) * t_hop
                 else:
-                    o['query_match_start_at'] = aligntime * t_hop
+                    o['match_start'] = aligntime * t_hop
                 
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)

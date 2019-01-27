@@ -29,5 +29,10 @@ run_test()
 
 # run test with JSON file output; also turn down verbosity to not output
 print("=== Match to JSON file output (with time range search) =====================")
-argv = ["audfprint", "match", "-d", "fpdbase.pklz", "--find-time-range", "--density", "200", "--json", "--opfile", "match.output.json", "--verbose", 0, "data/query.mp3"]
+argv = ["audfprint", "match", "-d", "fpdbase.pklz", "--find-time-range", "--density", "200", "--json", "--opfile", "match.output_aligned.json", "--verbose", 0, "data/query.mp3"]
+run_test()
+
+# run test with text file output
+print("=== Match to text file output (exact match determintion and precise match) =")
+argv = ["audfprint", "match", "-d", "fpdbase.pklz", "--find-time-range", "--exact-count", "--density", "200", "--json", "--opfile", "match.output_exact.json", "--verbose", 0, "data/query.mp3"]
 run_test()
