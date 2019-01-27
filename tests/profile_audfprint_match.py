@@ -18,9 +18,16 @@ def run_test():
     p.print_stats(10)
 
 # run test with text file output
+print("=== Match to text file output ==============================================")
 argv = ["audfprint", "match", "-d", "fpdbase.pklz", "--density", "200", "--opfile", "match.output.txt", "data/query.mp3"]
 run_test()
 
 # run test with JSON file output; also turn down verbosity to not output
+print("=== Match to JSON file output ==============================================")
 argv = ["audfprint", "match", "-d", "fpdbase.pklz", "--density", "200", "--json", "--opfile", "match.output.json", "--verbose", 0, "data/query.mp3"]
+run_test()
+
+# run test with JSON file output; also turn down verbosity to not output
+print("=== Match to JSON file output (with time range search) =====================")
+argv = ["audfprint", "match", "-d", "fpdbase.pklz", "--find-time-range", "--density", "200", "--json", "--opfile", "match.output.json", "--verbose", 0, "data/query.mp3"]
 run_test()

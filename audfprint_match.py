@@ -542,22 +542,18 @@ class Matcher(object):
                 o['fingerprinting_duration'] = self.fingerprinting_duration
                 o['query_duration'] = dur
                 o['total_fingerprints_analyzed'] = nhash
+                o['coverage'] = dur/ht.durationperiod[tophitid]
+                o['total_tracks_analyzed'] = int(rank)  # cast from np.int33
+                o['confidence'] = nhashaligned/nhashraw
+                o['total_fingerprints_analyzed'] = int(nhashraw)  # cast from np.int33
 
-                if self.verbose:
-                    if self.find_time_range:
-                        msg = ("Matched {:6.1f} s starting at {:6.1f} s in {:s}"
-                               " to time {:6.1f} s in {:s}").format(
-                                (max_time - min_time) * t_hop, min_time * t_hop, qry,
-                                (min_time + aligntime) * t_hop, ht.names[tophitid])
-                        o['query_match_length'] = (max_time - min_time) * t_hop
-                        o['query_match_start_at'] = min_time * t_hop
-                        o['track_match_start_at'] = (min_time + aligntime) * t_hop
-                    else:
-                        o['query_match_start_at'] = aligntime * t_hop
-                    o['coverage'] = dur/ht.durationperiod[tophitid]
-                    o['total_tracks_analyzed'] = int(rank)  # cast from np.int33
-                    o['confidence'] = nhashaligned/nhashraw
-                    o['total_fingerprints_analyzed'] = int(nhashraw)  # cast from np.int33
+                if self.find_time_range:
+                    o['query_match_length'] = (max_time - min_time) * t_hop
+                    o['query_match_start_at'] = min_time * t_hop
+                    o['track_match_start_at'] = (min_time + aligntime) * t_hop
+                else:
+                    o['query_match_start_at'] = aligntime * t_hop
+                
                 if self.illustrate:
                     self.illustrate_match(analyzer, ht, qry)
                 msgrslt.append(o)
